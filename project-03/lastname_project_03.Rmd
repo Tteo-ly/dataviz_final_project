@@ -34,6 +34,33 @@ Using the 2022 data:
 knitr::include_graphics("https://raw.githubusercontent.com/aalhamadani/dataviz_final_project/main/figures/tpa_max_temps_facet.png")
 ```
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(tidyverse)
+library(ggridges)
+
+weather_tpa <- read_csv("https://raw.githubusercontent.com/aalhamadani/datasets/master/tpa_weather_2022.csv")
+
+# Convert month number to month name label
+weather_tpa <- weather_tpa %>%
+  mutate(month_name = month(month, label = TRUE, abbr = FALSE))
+  
+```
+
+```{r, fig.alt="A faceted histogram showing daily maximum temperatures in Tampa for each month of 2022, with binwidth of 3 degrees Fahrenheit."}
+weather_tpa %>%
+  ggplot(aes(x = max_temp, fill = month_name)) +
+  geom_histogram(binwidth = 3, color = "white") +
+  facet_wrap(~ month_name) +
+  guides(fill = "none") +
+  labs(
+    x = "Maximum Temperature",
+    y = "Number of Days",
+  ) +
+  theme_bw()
+```
+
+
 Hint: the option `binwidth = 3` was used with the `geom_histogram()` function.
 
 (b) Create a plot like the one below:
@@ -42,6 +69,49 @@ Hint: the option `binwidth = 3` was used with the `geom_histogram()` function.
 knitr::include_graphics("https://raw.githubusercontent.com/aalhamadani/dataviz_final_project/main/figures/tpa_max_temps_density.png")
 ```
 
+```{r, fig.alt="A single density plot of daily maximum temperatures in Tampa in 2022, showing a right-skewed distribution peaking around 90 degrees Fahrenheit."}
+weather_tpa %>%
+  ggplot(aes(x = max_temp)) +
+  geom_density(kernel = "epanechnikov", bw = 0.5, fill = "gray40", color = "black") +
+  labs(
+    x = "Maximum Temperature",
+    y = "density",
+  ) +
+  theme_bw()
+```
+
+(b1) Here is a revised version of this plot.
+
+```{r}
+# Calculate median and mean for annotation
+med_temp <- median(weather_tpa$max_temp)
+mean_temp <- mean(weather_tpa$max_temp)
+
+# Redesigned density plot
+weather_tpa %>%
+  ggplot(aes(x = max_temp)) +
+  geom_density(kernel = "epanechnikov", bw = 0.5, 
+               fill = "#440154", color = "black", alpha = 0.7) +
+  geom_vline(xintercept = med_temp, linetype = "dashed", 
+             color = "orange", linewidth = 1) +
+  geom_vline(xintercept = mean_temp, linetype = "dotted", 
+             color = "cyan3", linewidth = 1) +
+  annotate("text", x = med_temp + 1.5, y = 0.072, 
+           label = paste("Median:", round(med_temp, 1)), 
+           color = "orange", hjust = 0) +
+  annotate("text", x = mean_temp - 1.5, y = 0.065, 
+           label = paste("Mean:", round(mean_temp, 1)), 
+           color = "cyan3", hjust = 1) +
+  labs(
+    x = "Maximum Temperature (°F)",
+    y = "Density",
+    title = "Distribution of Daily Max Temperatures in Tampa (2022)",
+    subtitle = "Dashed line = median, dotted line = mean"
+  ) +
+  theme_bw()
+```
+
+
 Hint: check the `kernel` parameter of the `geom_density()` function, and use `bw = 0.5`.
 
 (c) Create a plot like the one below:
@@ -49,6 +119,21 @@ Hint: check the `kernel` parameter of the `geom_density()` function, and use `bw
 ```{r, echo = FALSE, out.width="80%", fig.align='center'}
 knitr::include_graphics("https://raw.githubusercontent.com/aalhamadani/dataviz_final_project/main/figures/tpa_max_temps_density_facet.png")
 ```
+
+```{r, fig.alt="Twelve density plots faceted by month showing the distribution of daily maximum temperatures in Tampa in 2022."}
+weather_tpa %>%
+  ggplot(aes(x = max_temp, fill = month_name)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~ month_name) +
+  guides(fill = "none") +
+  labs(
+    x = "Maximum temperatures",
+    y = "Density",
+    title = "Density plots for each month in 2022"
+  ) +
+  theme_bw()
+```
+
 
 Hint: default options for `geom_density()` were used. 
 
@@ -61,9 +146,39 @@ knitr::include_graphics("https://raw.githubusercontent.com/aalhamadani/dataviz_f
 
 Hint: use the`{ggridges}` package, and the `geom_density_ridges()` function paying close attention to the `quantile_lines` and `quantiles` parameters. The plot above uses the `plasma` option (color scale) for the _viridis_ palette.
 
+```{r, fig.alt="A ridgeline plot showing monthly distributions of daily maximum temperatures in Tampa in 2022, colored using the viridis plasma palette."}
+weather_tpa %>%
+  ggplot(aes(x = max_temp, y = month_name, fill = stat(x))) +
+  geom_density_ridges_gradient(
+    quantile_lines = TRUE,
+    quantiles = 2,
+    scale = 3
+  ) +
+  scale_fill_viridis_c(option = "plasma", name = "") +
+  labs(
+    x = "Maximum Temperature (in Fahrenheit)"
+  ) +
+  theme_bw() +
+  theme(axis.title.y = element_blank())
+```
+
 
 (e) Create a plot of your choice that uses the attribute for precipitation _(values of -99.9 for temperature or -99.99 for precipitation represent missing data)_.
 
+```{r, fig.alt="A boxplot showing monthly precipitation levels at Tampa International Airport in 2022, with missing values removed."}
+weather_tpa %>%
+  filter(precipitation != -99.99) %>%
+  ggplot(aes(x = month_name, y = precipitation, fill = month_name)) +
+  geom_boxplot() +
+  guides(fill = "none") +
+  labs(
+    x = "Month",
+    y = "Precipitation (inches)",
+    title = "Monthly Precipitation at Tampa International Airport (2022)"
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
 
 
 ## PART 2 
@@ -81,65 +196,35 @@ Make sure to include a copy of the dataset in the `data/` folder, and reference 
 
 - [Billboard Top 100 Lyrics](https://raw.githubusercontent.com/aalhamadani/dataviz_final_project/main/data/BB_top100_2015.csv)
 
-- [RateMyProfessors comments](https://raw.githubusercontent.com/aalhamadani/dataviz_final_project/main/data/rmp_wit_comments.csv)
-
-- [FL Poly News Articles](https://raw.githubusercontent.com/aalhamadani/dataviz_final_project/main/data/flpoly_news_SP23.csv)
-
-
-(to get the "raw" data from any of the links listed above, simply click on the `raw` button of the GitHub page and copy the URL to be able to read it in your computer using the `read_csv()` function)
-
-
-### Option (B): Data on Concrete Strength 
-
-Concrete is the most important material in **civil engineering**. The concrete compressive strength is a highly nonlinear function of _age_ and _ingredients_. The dataset used here is from the [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/index.php), and it contains 1030 observations with 9 different attributes 9 (8 quantitative input variables, and 1 quantitative output variable). A data dictionary is included below: 
-
-
-Variable                      |    Notes                
-------------------------------|-------------------------------------------
-Cement                        | kg in a $m^3$ mixture             
-Blast Furnace Slag            | kg in a $m^3$ mixture  
-Fly Ash                       | kg in a $m^3$ mixture             
-Water                         | kg in a $m^3$ mixture              
-Superplasticizer              | kg in a $m^3$ mixture
-Coarse Aggregate              | kg in a $m^3$ mixture
-Fine Aggregate                | kg in a $m^3$ mixture      
-Age                           | in days                                             
-Concrete compressive strength | MPa, megapascals
-
-
-Below we read the `.csv` file using `readr::read_csv()` (the `readr` package is part of the `tidyverse`)
-
 ```{r}
-concrete <- read_csv("../data/concrete.csv", col_types = cols())
+library(tidytext)
+library(textdata)
+library(plotly)
+
+billboard <- read_csv("https://raw.githubusercontent.com/aalhamadani/dataviz_final_project/main/data/BB_top100_2015.csv")
+
+billboard_words <- billboard %>%
+  unnest_tokens(word, Lyrics) %>%
+  anti_join(stop_words)
 ```
 
 
-Let us create a new attribute for visualization purposes, `strength_range`: 
-
-```{r}
-new_concrete <- concrete %>%
-  mutate(strength_range = cut(Concrete_compressive_strength, 
-                              breaks = quantile(Concrete_compressive_strength, 
-                                                probs = seq(0, 1, 0.2))) )
+```{r, fig.alt="A horizontal bar chart showing the top 20 most frequent words in Billboard Top 100 lyrics from 2015, colored by frequency using the plasma palette."}
+billboard_words %>%
+  count(word, sort = TRUE) %>%
+  slice_max(n, n = 20) %>%
+  ggplot(aes(x = reorder(word, n), y = n, fill = n, text = paste("Word:", word, "<br>Count:", n)))+
+  geom_col() +
+  coord_flip() +
+  scale_fill_viridis_c(option = "plasma") +
+  guides(fill = "none") +
+  labs(
+    x = "Word",
+    y = "Frequency",
+    title = "Top 20 Most Frequent Words in Billboard Top 100 Lyrics (2015)"
+  ) +
+  theme_bw()
 ```
-
-
-
-1. Explore the distribution of 2 of the continuous variables available in the dataset. Do ranges make sense? Comment on your findings.
-
-2. Use a _temporal_ indicator such as the one available in the variable `Age` (measured in days). Generate a plot similar to the one shown below. Comment on your results.
-
-```{r, echo = FALSE, out.width="80%", fig.align='center'}
-knitr::include_graphics("https://raw.githubusercontent.com/aalhamadani/dataviz_final_project/main/figures/concrete_strength.png")
-```
-
-
-3. Create a scatterplot similar to the one shown below. Pay special attention to which variables are being mapped to specific aesthetics of the plot. Comment on your results. 
-
-```{r, echo = FALSE, out.width="80%", fig.align='center'}
-knitr::include_graphics("https://raw.githubusercontent.com/aalhamadani/dataviz_final_project/main/figures/cement_plot.png")
-```
-
 
 
 

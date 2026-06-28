@@ -7,6 +7,142 @@ output:
     toc_float: true
 ---
 
-# Data Visualization Project 02
+# Data Visualization Project 02 revised version
 
-_revised version of mini-project 02 goes here_
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+library(tidyverse)
+library(plotly)
+library(sf)
+library(maps)
+library(broom)
+
+download.file(url = "https://github.com/aalhamadani/datasets/raw/refs/heads/main/us_births_00_14.csv",
+  destfile = "../data/us_births_00_14.csv")
+
+births <- read_csv("../data/us_births_00_14.csv")
+```
+
+```{r}
+births_by_year <- births %>%
+  group_by(year) %>%
+  summarize(total_births = sum(births))
+
+p <- ggplot(births_by_year, aes(x = year, y = total_births)) +
+  geom_line(color = "#2c7bb6", linewidth = 1.2) +
+  geom_point(color = "#2c7bb6", size = 3) +
+  labs(  x = "Year",
+         y = "Total Births") +
+  theme_minimal()
+
+interactive_plot <- ggplotly(p)
+interactive_plot
+
+# Save as self-contained HTML
+htmlwidgets::saveWidget(interactive_plot, 
+                        "../figures/births_over_time.html",
+                        selfcontained = TRUE)
+```
+
+```{r}
+births_heatmap <- births %>%
+  group_by(year, month) %>%
+  summarize(total_births = sum(births), .groups = "drop")
+
+ggplot(births_heatmap, aes(x = factor(month), y = factor(year), 
+                            fill = total_births)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(option = "plasma", name = "Total Births") +
+  labs(
+    title = "U.S. Births by Month and Year (2000–2014)",
+    subtitle = "Warmer colors indicate more births",
+    x = "Month",
+    y = "Year"
+  ) +
+  theme_bw()
+```
+
+```{r}
+births_model <- lm(births ~ factor(year) + factor(month) + day_of_week, 
+                   data = births)
+
+tidy_model <- tidy(births_model, conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(
+    predictor = case_when(
+      str_detect(term, "year") ~ "Year",
+      str_detect(term, "month") ~ "Month",
+      TRUE ~ "Day of Week"
+    ),
+    clean_term = term %>%
+      str_remove("factor\\(year\\)") %>%
+      str_remove("factor\\(month\\)") %>%
+      str_remove("day_of_week")
+  )
+```
+
+
+```{r, fig.width=12, fig.height=5}
+ggplot(tidy_model, aes(x = estimate, y = reorder(clean_term, estimate))) +
+  geom_point(color = "#2c7bb6", size = 3) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), 
+                 height = 0.2, color = "#2c7bb6") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
+  facet_wrap(~ predictor, scales = "free", ncol = 3) +
+  labs(
+    title = "Linear Model Coefficients for U.S. Births",
+    subtitle = "Predictors shown separately due to different scales",
+    x = "Estimate",
+    y = NULL
+  ) +
+  theme_bw() +
+  theme(axis.text.y = element_text(size = 8))
+```
+
+## Discussion
+
+### Planning and Data Preparation
+
+This project explores U.S. daily birth data from 2000 to 2014 using four 
+visualizations: an interactive line chart, a heatmap of births by month 
+and year, a faceted linear model coefficients plot, and a bar chart of 
+average births by day of week.
+
+The dataset contained 5,479 rows with no missing values. Preparation steps 
+included aggregating by year and month for the heatmap, grouping by day of 
+week for the bar chart, and correcting non-standard day abbreviations 
+("Tues" and "Thurs") in the factor levels.
+
+### Story and Findings
+
+The interactive line chart shows a steady decline in total births after 
+2007, coinciding with the global financial crisis. The heatmap adds 
+important context. The decline is visible across all months, not just 
+specific seasons. February consistently shows the fewest births every year 
+due to it being the shortest month, while July through September show the 
+highest totals.
+
+The bar chart of average births by day of week reveals a sharp weekend 
+drop-off, with Sunday recording the fewest births on average. This pattern 
+strongly suggests that scheduled procedures such as cesarean sections and 
+induced labors drive a large share of births, as these are rarely performed 
+on weekends.
+
+The faceted coefficients plot confirms these findings statistically. Because 
+year, month, and day of week operate on different scales, they are shown in 
+separate panels to avoid misleading comparisons. Day of week shows the 
+largest negative effects for Saturday and Sunday. Among months, September 
+and August have the strongest positive coefficients. Among years, 2007 and 
+2006 show the highest estimates, with a clear downward trend afterward.
+
+### Design Principles
+
+All visualizations use colorblind-safe palettes such as viridis plasma for the 
+heatmap and Blues for the bar chart. The interactive line chart allows 
+readers to hover over data points for exact values. Annotations guide 
+attention to the weekend drop-off in the bar chart. The coefficients plot 
+uses free scales per facet to ensure each predictor is interpreted on its 
+own terms. Warnings and messages are suppressed throughout for a clean 
+final report.
+
